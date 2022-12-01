@@ -70,11 +70,11 @@ def prepare_data(logger,
     input_ids_list = []
     attn_mask_list = []
     for data in tqdm(data_list):
-        prompt = title_prefix.copy()+" "+data['title']+" "
+        prompt = title_prefix+" "+data['title']+"\n"
         if summary_prefix is not None: 
-            prompt = prompt + summary_prefix.copy()+" "+data['title']+" "
+            prompt = prompt + summary_prefix+" "+data['title']+"\n"
         
-        prompt = prompt + content_prefix.copy()
+        prompt = prompt + content_prefix
 
         logger.info(prompt)
         
