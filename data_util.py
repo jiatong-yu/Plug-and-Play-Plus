@@ -96,7 +96,3 @@ def prepare_data(logger,
         "input_ids": torch.LongTensor(input_ids_list),
         "attn_mask": torch.LongTensor(attn_mask_list)
     }
-        
-
-
-
