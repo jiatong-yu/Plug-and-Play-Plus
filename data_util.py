@@ -10,6 +10,7 @@ import torch
 def get_dataloader(inputs, batch_size=64):
     """
     Return dataloader. for each batch, input_ids = batch[0] and attn_mask = batch[1]
+        inputs: Dict[str, List] from prepared_data()
     """
     shape = inputs["input_ids"].shape 
     for v in inputs.values():
@@ -28,6 +29,7 @@ def load_data(logger, name="newsroom", split="validation", data_dir = "./data"):
     Return
      data: Dataset object, with columns "title", "summary", "title"
     """
+    logger.info("Loading dataset...")
     if name == "newsroom":
         data = load_dataset(name, split=split, data_dir = data_dir).remove_columns(
             ['url', 'date', 'density_bin', 'coverage_bin', 'compression_bin', 'density', 'coverage', 'compression']
@@ -36,7 +38,7 @@ def load_data(logger, name="newsroom", split="validation", data_dir = "./data"):
     else: 
         raise NotImplementedError()
     
-    logger.info(f"loaded {len(data)} from {name}.")
+    logger.info(f"loaded {len(data)} data from {name}.")
     return data
     
 
@@ -83,7 +85,7 @@ def prepare_data(logger,
         tokens = [bos_token_id] + tokens 
         tokens = tokens + [eos_token_id]
 
-        logger.info(f"length of tokens: {len(tokens)}")
+        # logger.info(f"length of tokens: {len(tokens)}")
 
         n_pad = max_length - len(tokens)
         input_ids = tokens + [0 for _ in range(n_pad)]

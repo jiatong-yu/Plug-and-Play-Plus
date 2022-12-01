@@ -1,12 +1,10 @@
-import numpy as np
-import os
 import torch
-import torch.nn.functional as F
-import logging 
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from transformers import GPT2LMHeadModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from tqdm import tqdm
+
+from data_util import get_dataloader
 
 def load_model(logger, model_name="gpt2"):
     """
@@ -64,3 +62,57 @@ def load_model(logger, model_name="gpt2"):
 
     raise NotImplementedError("model input not supported.")
 
+
+def generate(logger, 
+            model, tokenizer, 
+            input_tensors, batch_size = 64,
+            method="beam", beam = 5,
+            min_len = 0, max_len = 512,
+            temperature = 0.8, lp = 1
+            ):
+    """
+    Returns List[str] of model generation.
+        input_tensors: Dict[str, List] from prepared_data (not dataloader).
+    """
+    assert method in ["beam", "greedy", "sampling"]
+
+    dataloader = get_dataloader(input_tensors,batch_size=batch_size)
+    generations = []
+    
+    logger.info("Running model generation...")
+    for batch in tqdm(dataloader):
+        input_ids = batch[0].cuda()
+        attn_mask = batch[1].cuda()
+        
+        if method == "beam":
+            outputs = model.generate(input_ids, attention_mask=attn_mask,
+                                    max_length = max_len,
+                                    min_length = min_len,
+                                    temperature = temperature,
+                                    num_beams = beam,
+                                    length_penalty = lp
+                                    )
+            generations.append(tokenizer.batch_decode(outputs, skip_special_tokens=True))
+        
+        elif method == "greedy":
+            outputs = model.generate(input_ids, attention_mask=attn_mask,
+                                    max_length = max_len,
+                                    min_length = min_len,
+                                    temperature = temperature,
+                                    do_sample = False,
+                                    length_penalty = lp
+                                    )
+            generations.append(tokenizer.batch_decode(outputs, skip_special_tokens=True))
+            
+
+        elif method == "sampling":
+            outputs = model.generate(input_ids, attention_mask=attn_mask,
+                                    max_length = max_len,
+                                    min_length = min_len,
+                                    temperature = temperature,
+                                    do_sample = True,
+                                    length_penalty = lp
+                                    )
+            generations.append(tokenizer.batch_decode(outputs, skip_special_tokens=True))
+
+    return generations 
