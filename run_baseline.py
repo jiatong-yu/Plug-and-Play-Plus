@@ -3,6 +3,7 @@ import os
 import torch
 import logging
 import argparse
+import random
 
 from data_util import load_data, prepare_data, get_dataloader
 from model_util import load_model, generate
@@ -10,18 +11,23 @@ from model_util import load_model, generate
 def main(logger, args):
 
     raw_data = load_data(logger, split=args.split)
-    model, tokenizer = load_model(logger, args.model)
-
     DEBUG = True 
     if DEBUG:
-        data = raw_data.select([i for i in range(20)])
+        data = raw_data.select([random.randint(0,len(raw_data)-1) for i in range(50)])
     else: 
         data = raw_data
+    model, tokenizer = load_model(logger, args.model)
+
     
+    if args.include_summary:
+        summary_prefix = "Summary:"
+    else: 
+        summary_prefix = None 
     input_tensors = prepare_data(logger, tokenizer,
                                  data,
                                  title_prefix= "Title:",
                                  content_prefix= "Content:", 
+                                 summary_prefix= summary_prefix,
                                  max_length=args.input_max_len
                                  )
 
@@ -35,10 +41,18 @@ def main(logger, args):
         out_dir = args.out_dir
         assert os.path.exists(out_dir)
         
-        base = out_dir + "/" + args.model+"-result-1.txt"
-        reference = out_dir + "/" + args.model+"-reference-1.txt"
+        # base = out_dir + "/" + args.model+"-"+args.method+"-result-1.txt"
+        # reference = out_dir + "/" + args.model+"-reference-1.txt"
 
-        # base = "{}-{}".format(args.model, str(args.generate_min_len))
+        base = args.out_dir+"/{}-{}".format(args.model, args.method)
+        reference = args.out_dir+"/{}-{}".format(args.model, args.method)
+
+        if args.include_summary:
+            base = base+"-sum"
+            reference = reference + "-sum"
+        
+        base = base+"-res.txt"
+        reference = reference+"-ref.txt"
         
         f = open(base,"w")
         r = open(reference,"w")
@@ -60,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument("--input_max_len",type=int,default=126)
     parser.add_argument("--generate_max_len",type=int,default=512)
     parser.add_argument("--batch_size",type=int, default=10)
+    parser.add_argument("--include_summary",default=False, action="store_true")
 
     parser.add_argument("--disgard_gen",default=False,action="store_true")
     parser.add_argument("--out_dir",type=str,default="output")

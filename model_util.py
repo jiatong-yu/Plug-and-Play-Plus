@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from data_util import get_dataloader
 
-def load_model(logger, model_name="gpt2"):
+def load_model(logger, model_name):
     """
     Load transformers model, return tokenizer and model. 
     """
@@ -28,11 +28,21 @@ def load_model(logger, model_name="gpt2"):
     else:
         raise NotImplementedError()
 
-
+    torch.cuda.empty_cache()
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-    tokenizer.pad_token = tokenizer.eos_token
-    torch.cuda.empty_cache()
+    # if tokenizer.eos_token is None:
+    #     tokenizer.add_special_tokens({'eos_token': '<EOS>'})
+    # if tokenizer.bos_token is None: 
+    #     tokenizer.add_special_tokens({'bos_token': '<BOS>'})
+    # tokenizer.add_special_tokens({'pad_token': '<PAD>'})
+    if tokenizer.eos_token is None:
+        logger.info("TOKENIZER: updated eos token")
+        tokenizer.eos_token = "<EOS>"
+    if tokenizer.bos_token is None:
+        logger.info("TOKENIZER: updated bos token")
+        tokenizer.bos_token = "<BOS>"
+    tokenizer.pad_token = "<PAD>"
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         device_map="auto",
@@ -43,14 +53,12 @@ def load_model(logger, model_name="gpt2"):
     return model, tokenizer 
         
 
-
-
 def generate(logger, 
             model, tokenizer, 
             input_tensors, batch_size = 64,
             method="beam", beam = 5,
             min_len = 0, max_len = 512,
-            temperature = 0.8, lp = 1
+            temperature = 1.5, lp = 1
             ):
     """
     Returns List[str] of model generation.
@@ -97,11 +105,13 @@ def generate(logger,
                                     min_length = min_len,
                                     temperature = temperature,
                                     do_sample = True,
+                                    top_k = 0,
+                                    repetition_penalty = 0.5,
                                     length_penalty = lp,
                                     eos_token_id = tokenizer.eos_token_id,
                                     bos_token_id = tokenizer.bos_token_id,
                                     )
             generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
     
-    logger.info(f"SHAPE OF GENERATIONS: {len(generations)}")
+    # logger.info(f"SHAPE OF GENERATIONS: {len(generations)}")
     return generations 
