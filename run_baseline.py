@@ -14,7 +14,7 @@ def main(logger, args):
 
     DEBUG = True 
     if DEBUG:
-        data = raw_data.select([i for i in range(50)])
+        data = raw_data.select([i for i in range(20)])
     else: 
         data = raw_data
     
@@ -22,7 +22,6 @@ def main(logger, args):
                                  data,
                                  title_prefix= "Title:",
                                  content_prefix= "Content:", 
-                                 summary_prefix="Summary:",
                                  max_length=args.input_max_len
                                  )
 
@@ -32,11 +31,21 @@ def main(logger, args):
                             min_len=args.generate_min_len,
                             max_len=args.generate_max_len)
 
-    if DEBUG:
-        for gen in generations:
-            print(gen)
-            print("======================")
-    return 
+    if not args.disgard_gen:
+        out_dir = args.out_dir
+        assert os.path.exists(out_dir)
+        
+        base = out_dir + "/" + args.model+"-result-1.txt"
+        reference = out_dir + "/" + args.model+"-reference-1.txt"
+
+        # base = "{}-{}".format(args.model, str(args.generate_min_len))
+        
+        f = open(base,"w")
+        r = open(reference,"w")
+        for i in range(len(data)):
+            f.write(generations[i]+"\n\n\n")
+            r.write(data[i]["text"]+"\n\n\n")
+            # print(generations[i])
 
 
 
@@ -50,8 +59,10 @@ if __name__ == '__main__':
     parser.add_argument("--generate_min_len",type=int,default=0)
     parser.add_argument("--input_max_len",type=int,default=126)
     parser.add_argument("--generate_max_len",type=int,default=512)
-    parser.add_argument("--batch_size",type=int, default=64)
+    parser.add_argument("--batch_size",type=int, default=10)
 
+    parser.add_argument("--disgard_gen",default=False,action="store_true")
+    parser.add_argument("--out_dir",type=str,default="output")
 
     
     args = parser.parse_args()

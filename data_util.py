@@ -7,21 +7,6 @@ import os
 from tqdm import tqdm 
 import torch
 
-def get_dataloader(inputs, batch_size=64):
-    """
-    Return dataloader. for each batch, input_ids = batch[0] and attn_mask = batch[1]
-        inputs: Dict[str, List] from prepared_data()
-    """
-    shape = inputs["input_ids"].shape 
-    for v in inputs.values():
-        assert v.shape == shape 
-    
-    dataset = TensorDataset(inputs["input_ids"], inputs["attn_mask"])
-    sampler = SequentialSampler(dataset)
-    dataloader = DataLoader(dataset, sampler=sampler, batch_size=batch_size)
-    return dataloader
-    
-
 def load_data(logger, name="newsroom", split="validation", data_dir = "./data"):
     """
     Load data from newsroom dataset.
@@ -40,6 +25,22 @@ def load_data(logger, name="newsroom", split="validation", data_dir = "./data"):
     
     logger.info(f"loaded {len(data)} data from {name}.")
     return data
+
+
+def get_dataloader(inputs, batch_size=64):
+    """
+    Return dataloader. for each batch, input_ids = batch[0] and attn_mask = batch[1]
+        inputs: Dict[str, List] from prepared_data()
+    """
+    shape = inputs["input_ids"].shape 
+    for v in inputs.values():
+        assert v.shape == shape 
+    
+    dataset = TensorDataset(inputs["input_ids"], inputs["attention_mask"])
+    # dataset = TensorDataset(inputs["input_ids"])
+    sampler = SequentialSampler(dataset)
+    dataloader = DataLoader(dataset, sampler=sampler, batch_size=batch_size)
+    return dataloader
     
 
 
@@ -71,30 +72,35 @@ def prepare_data(logger,
     
     input_ids_list = []
     attn_mask_list = []
-    for data in tqdm(data_list):
-        prompt = title_prefix+" "+data['title']+"\n"
+
+    prompts = []
+    for data in data_list:
+        prompt = title_prefix+" "+data['title']+" "
         if summary_prefix is not None: 
-            prompt = prompt + summary_prefix+" "+data['title']+"\n"
+            prompt = prompt + summary_prefix+" "+data['summary']+" "
         
         prompt = prompt + content_prefix
-
-        logger.info(prompt)
-        
-        tokens = tokenizer(prompt)["input_ids"][:max_length-2]
-
-        tokens = [bos_token_id] + tokens 
-        tokens = tokens + [eos_token_id]
-
-        # logger.info(f"length of tokens: {len(tokens)}")
-
-        n_pad = max_length - len(tokens)
-        input_ids = tokens + [0 for _ in range(n_pad)]
-        attn_mask = [1 for _ in tokens] + [0 for _ in range(n_pad)]
-
-        input_ids_list.append(input_ids)
-        attn_mask_list.append(attn_mask)
+        prompts.append(prompt)
     
-    return {
-        "input_ids": torch.LongTensor(input_ids_list),
-        "attn_mask": torch.LongTensor(attn_mask_list)
-    }
+    input_tensors = tokenizer(prompts, return_tensors="pt", padding=True)
+    
+    # tokens = tokenizer(prompt)["input_ids"][:max_length-2]
+
+    # tokens = [bos_token_id] + tokens 
+    # tokens = tokens + [eos_token_id]
+
+    # # logger.info(f"length of tokens: {len(tokens)}")
+
+    # n_pad = max_length - len(tokens)
+    # input_ids = [0 for _ in range(n_pad)]+tokens
+    # attn_mask = [0 for _ in range(n_pad)]+[1 for _ in tokens] 
+
+    # input_ids_list.append(input_ids)
+    # attn_mask_list.append(attn_mask)
+    
+    # return {
+    #     "input_ids": torch.LongTensor(input_ids_list),
+    #     "attn_mask": torch.LongTensor(attn_mask_list)
+    # }
+
+    return input_tensors
