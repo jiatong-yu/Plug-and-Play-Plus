@@ -36,13 +36,6 @@ def load_model(logger, model_name):
     # if tokenizer.bos_token is None: 
     #     tokenizer.add_special_tokens({'bos_token': '<BOS>'})
     # tokenizer.add_special_tokens({'pad_token': '<PAD>'})
-    if tokenizer.eos_token is None:
-        logger.info("TOKENIZER: updated eos token")
-        tokenizer.eos_token = "<EOS>"
-    if tokenizer.bos_token is None:
-        logger.info("TOKENIZER: updated bos token")
-        tokenizer.bos_token = "<BOS>"
-    tokenizer.pad_token = "<PAD>"
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         device_map="auto",
@@ -50,6 +43,14 @@ def load_model(logger, model_name):
         max_memory=max_memory,
         offload_folder = "~/.cache/huggingface/.offload"
         )
+    if tokenizer.eos_token is None:
+        logger.info("TOKENIZER: updated eos token")
+        tokenizer.add_special_tokens({'eos_token': '<|endoftext|>'})
+    if tokenizer.bos_token is None:
+        logger.info("TOKENIZER: updated bos token")
+        tokenizer.add_special_tokens({'bos_token': '<|endoftext|>'})
+    tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
+    model.resize_token_embeddings(len(tokenizer))
     return model, tokenizer 
         
 

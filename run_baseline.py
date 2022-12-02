@@ -13,7 +13,7 @@ def main(logger, args):
     raw_data = load_data(logger, split=args.split)
     DEBUG = True 
     if DEBUG:
-        data = raw_data.select([random.randint(0,len(raw_data)-1) for i in range(50)])
+        data = raw_data.select([random.randint(0,len(raw_data)-1) for i in range(args.n_sample)])
     else: 
         data = raw_data
     model, tokenizer = load_model(logger, args.model)
@@ -58,7 +58,7 @@ def main(logger, args):
         r = open(reference,"w")
         for i in range(len(data)):
             f.write(generations[i]+"\n\n\n")
-            r.write(data[i]["text"]+"\n\n\n")
+            r.write(data[i]+"\n\n\n")
             # print(generations[i])
 
 
@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model",type=str, default="gpt2")
-    parser.add_argument("--method",type=str, default="beam")
+    parser.add_argument("--method",type=str, default="sampling")
     parser.add_argument("--split",type=str, default="test")
     parser.add_argument("--num_beam",type=int, default=5)
     parser.add_argument("--generate_min_len",type=int,default=0)
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size",type=int, default=10)
     parser.add_argument("--include_summary",default=False, action="store_true")
 
+    parser.add_argument("--n_sample",type=int,default=50)
     parser.add_argument("--disgard_gen",default=False,action="store_true")
     parser.add_argument("--out_dir",type=str,default="output")
 
