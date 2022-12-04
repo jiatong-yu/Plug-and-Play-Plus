@@ -1,0 +1,10 @@
+GPT2-xl mauve score: 0.006081698674325962
+GPT2-large mauve score: 0.005957455019922737
+OPT-1.3b mauve score: 0.005850002533692368
+galactica-1.3b mauve score: 0.00497926866295542
+
+GPT2-xl bleu score: 0.07874921360898343
+GPT2-large bleu score: 0.08758583862063421
+OPT-1.3b bleu score: 0.07874921360898343
+galactica-1.3b bleu score: 0.042308033915314694
+
