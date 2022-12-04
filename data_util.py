@@ -1,4 +1,5 @@
 import datasets 
+import logging
 from datasets import load_dataset, Dataset
 from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
 import numpy as np
@@ -6,22 +7,32 @@ import pandas as pd
 import os 
 from tqdm import tqdm 
 import torch
+import pickle 
 
-def load_data(logger, name="newsroom", split="validation", data_dir = "./data"):
+
+
+def load_data(logger, name, split="validation", data_dir = "./data"):
     """
     Load data from newsroom dataset.
     
     Return
-     data: Dataset object, with columns "title", "summary", "title"
+        data with title, summary, and text 
     """
-    logger.info("Loading dataset...")
+    logger.info(f"Loading dataset...")
     if name == "newsroom":
         data = load_dataset(name, split=split, data_dir = data_dir).remove_columns(
             ['url', 'date', 'density_bin', 'coverage_bin', 'compression_bin', 'density', 'coverage', 'compression']
         )
         
-    else: 
-        raise NotImplementedError()
+    elif name == "cc_news":
+        # cc-news only has train set 
+        if split != "train":
+            logger.warning(f"Asked for {split} split, but cc-news only has train split.")
+        data = load_dataset("cc_news",split="train").remove_columns(
+            ["date","domain","image_url","url"]
+        ).rename_column("description","summary")
+        
+        
     
     logger.info(f"loaded {len(data)} data from {name}.")
     return data
@@ -44,63 +55,33 @@ def get_dataloader(inputs, batch_size=64):
     
 
 
-def prepare_data(logger,
-                    tokenizer,data_list, 
-                    title_prefix, content_prefix, 
-                    summary_prefix=None, 
-                    max_length=512):
+def prepare_data(logger,tokenizer,data_list):
     """
     Truncate each data to max_length and pad short samples, prepare data in tensor form.
         data_list: Dataset, keys {title, summary, text}
         title_prefix, content_prefix, summary_prefix: str 
     
     Prepare each data in the form title_prefix, title, (summary_prefix, summary), content_prefix.
-    
-    TODO: could optimize speed.
-
-    Return 
-        input_tensors: Dict[str, List] with keys {input_ids, attn_mask}
-            input_ids: tokenizer output of prompt 
-            attn_mask: mask out paddings
-        
     """
-
-    bos_token_id = tokenizer.bos_token_id
-    eos_token_id = tokenizer.eos_token_id 
 
     logger.info("preparing data tensors...")
     
-    input_ids_list = []
-    attn_mask_list = []
-
+    """
+    TODO @mwtang come up with better prompts please.
+    """
     prompts = []
     for data in data_list:
-        prompt = title_prefix+" "+data['title']+" "
-        if summary_prefix is not None: 
-            prompt = prompt + summary_prefix+" "+data['summary']+" "
+        if len(data["summary"]) > 1:
+            summary_chunck = data["summary"].split(sep="\n")[0].split(sep=". ")[0]+". "
+            prefix = "Generate long article based on title and summary. Title: "
+            prompt = prefix+data["title"]+" Summary: "+ summary_chunck+"Generation:"
         
-        prompt = prompt + content_prefix
+        else: 
+            prefix = "Generate a long article based on title. Title: "
+            prompt = prefix+data["title"]+" Generation:"
+
         prompts.append(prompt)
     
     input_tensors = tokenizer(prompts, return_tensors="pt", padding=True)
-    
-    # tokens = tokenizer(prompt)["input_ids"][:max_length-2]
-
-    # tokens = [bos_token_id] + tokens 
-    # tokens = tokens + [eos_token_id]
-
-    # # logger.info(f"length of tokens: {len(tokens)}")
-
-    # n_pad = max_length - len(tokens)
-    # input_ids = [0 for _ in range(n_pad)]+tokens
-    # attn_mask = [0 for _ in range(n_pad)]+[1 for _ in tokens] 
-
-    # input_ids_list.append(input_ids)
-    # attn_mask_list.append(attn_mask)
-    
-    # return {
-    #     "input_ids": torch.LongTensor(input_ids_list),
-    #     "attn_mask": torch.LongTensor(attn_mask_list)
-    # }
 
     return input_tensors

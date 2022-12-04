@@ -31,11 +31,6 @@ def load_model(logger, model_name):
     torch.cuda.empty_cache()
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-    # if tokenizer.eos_token is None:
-    #     tokenizer.add_special_tokens({'eos_token': '<EOS>'})
-    # if tokenizer.bos_token is None: 
-    #     tokenizer.add_special_tokens({'bos_token': '<BOS>'})
-    # tokenizer.add_special_tokens({'pad_token': '<PAD>'})
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         device_map="auto",
@@ -51,22 +46,28 @@ def load_model(logger, model_name):
         tokenizer.add_special_tokens({'bos_token': '<|endoftext|>'})
     tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
     model.resize_token_embeddings(len(tokenizer))
-    return model, tokenizer 
+
+    return model, tokenizer
         
 
 def generate(logger, 
             model, tokenizer, 
             input_tensors, batch_size = 64,
-            method="beam", beam = 5,
-            min_len = 0, max_len = 512,
-            temperature = 1.5, lp = 1
+            method="top-p",
+            min_len = 0, 
+            max_len = 0,
             ):
     """
     Returns List[str] of model generation.
         input_tensors: Dict[str, List] from prepared_data (not dataloader).
+    
+    Please use top-p decoding. The other ones are really bad.
     """
-    assert method in ["beam", "greedy", "sampling"]
-
+    assert method in ["beam", "greedy", "top-p"]
+    temperature = 1.5
+    lp = 1
+    
+    
     dataloader = get_dataloader(input_tensors,batch_size=batch_size)
     generations = []
     
@@ -74,13 +75,14 @@ def generate(logger,
     for batch in tqdm(dataloader):
         input_ids = batch[0].cuda()
         attn_mask = batch[1].cuda()
+
         
         if method == "beam":
             outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = max_len,
-                                    min_length = min_len,
+                                    max_length = len(input_ids)+max_len,
+                                    min_length = len(input_ids)+min_len,
                                     temperature = temperature,
-                                    num_beams = beam,
+                                    num_beams = 5,
                                     length_penalty = lp,
                                     eos_token_id = tokenizer.eos_token_id,
                                     bos_token_id = tokenizer.bos_token_id,
@@ -89,8 +91,8 @@ def generate(logger,
         
         elif method == "greedy":
             outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = max_len,
-                                    min_length = min_len,
+                                    max_length = len(input_ids)+max_len,
+                                    min_length = len(input_ids)+min_len,
                                     temperature = temperature,
                                     do_sample = False,
                                     length_penalty = lp,
@@ -100,14 +102,15 @@ def generate(logger,
             generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
             
 
-        elif method == "sampling":
+        elif method == "top-p":
             outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = max_len,
-                                    min_length = min_len,
+                                    max_length = len(input_ids)+max_len,
+                                    min_length = len(input_ids)+min_len,
                                     temperature = temperature,
                                     do_sample = True,
                                     top_k = 0,
-                                    repetition_penalty = 0.5,
+                                    top_p = 0.9,
+                                    repetition_penalty = 0.9,
                                     length_penalty = lp,
                                     eos_token_id = tokenizer.eos_token_id,
                                     bos_token_id = tokenizer.bos_token_id,
