@@ -1,6 +1,6 @@
 ## adversarial inputs
 ##### Generation (1): GPT2-large, temp=1.1
-_Generate long article based on title and summary. Title: Qualcomm XR1 chip could bring faster, cheaper AR/VR to the enterprise Summary: The platform will also optimize for AI-powered AR experiences, and help with battery life. Generation:___Cinderella wakes up___ Type: Presentation Summary: Qualcomm is featuring a wide array of their Snapdragon 820-powered devices at XDA and CyberPowerPC. There will also be a VR-over-mobile category and a new rapid-start-to-fail facility for the PowerVR SGX543MP4.GameCPU: Mecha  
+_Generate long article based on title and summary. Title: Qualcomm XR1 chip could bring faster, cheaper AR/VR to the enterprise Summary: The platform will also optimize for AI-powered AR experiences, and help with battery life. Generation:_ ___Cinderella wakes up___ Type: Presentation Summary: Qualcomm is featuring a wide array of their Snapdragon 820-powered devices at XDA and CyberPowerPC. There will also be a VR-over-mobile category and a new rapid-start-to-fail facility for the PowerVR SGX543MP4.GameCPU: Mecha  
 
 Ubuntu VR World Tour Location: Singit, Neustadt, Germany  
 
