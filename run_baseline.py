@@ -8,14 +8,27 @@ import numpy as np
 from data_util import load_data, prepare_data, get_dataloader
 from model_util import load_model, generate
 
+
 def main(logger, args):
 
-    raw_data = load_data(logger, name=args.data_task, split=args.split)
-    DEBUG = True 
-    if DEBUG:
-        data = raw_data.select([random.randint(0,len(raw_data)-1) for i in range(args.n_sample)])
-    else: 
-        data = raw_data
+    data = load_data(logger, name=args.data_task, split=args.split)
+    # if DEBUG:
+    #     data = data.select([random.randint(0,len(data)-1) for i in range(args.n_sample)])
+
+
+    # if FILTERING:
+    logger.warning("filter loaded data. This will take a while to process.")
+    data = data.filter(
+                        lambda d: d["url"].startswith(("https:","www"))
+                    ).filter(
+                        lambda d: len(d["title"])>30
+                    ).filter(
+                        lambda d: len(d["summary"]) > 60
+                    )
+    data = data.remove_columns("url")
+    logger.info(f"filtered data has len {len(data)}")
+
+    data = data.select([i for i in range(400)])
 
     model, tokenizer = load_model(logger, args.model)
     
@@ -30,20 +43,18 @@ def main(logger, args):
                             )
 
     if not args.disgard_gen:
-        out_dir = "baseline1/"+args.data_task+"-output"
+        out_dir = "baseline1/"+args.data_task+"-output/var_len/"
         assert os.path.exists(out_dir)
         
 
-        base = out_dir+"/{}-{}".format(args.model, args.method)
-        reference = out_dir+"/{}-{}".format(args.model, args.method)
+        base = out_dir+"/{}-{}".format(args.model,args.generate_min_len)
+        reference = out_dir+"/{}-{}".format(args.model,args.generate_min_len)
 
         
-        base = base+"-res.npy"
-        reference = reference+"-ref.npy"
+        base = base+"-fil-res.npy"
+        reference = reference+"-fil-ref.npy"
         f = open(base, "wb")
         r = open(reference,"wb")
-        base = base+"-res.npy"
-        reference = reference+"-ref.npy"
         np.save(f, generations)
         np.save(r, data)
         
@@ -69,9 +80,9 @@ if __name__ == '__main__':
     parser.add_argument("--model",type=str, default="gpt2")
     parser.add_argument("--method",type=str, default="top-p")
     parser.add_argument("--split",type=str, default="test")
-    parser.add_argument("--generate_min_len",type=int,default=256)
-    parser.add_argument("--generate_max_len",type=int,default=640)
-    parser.add_argument("--batch_size",type=int, default=10)
+    parser.add_argument("--generate_min_len",type=int,default=300)
+    parser.add_argument("--generate_max_len",type=int,default=800)
+    parser.add_argument("--batch_size",type=int, default=50)
     parser.add_argument("--data_task",type=str, default="cc_news")
 
     parser.add_argument("--n_sample",type=int,default=50)

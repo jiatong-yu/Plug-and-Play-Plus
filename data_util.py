@@ -29,8 +29,10 @@ def load_data(logger, name, split="validation", data_dir = "./data"):
         if split != "train":
             logger.warning(f"Asked for {split} split, but cc-news only has train split.")
         data = load_dataset("cc_news",split="train").remove_columns(
-            ["date","domain","image_url","url"]
+            ["date","domain","image_url"]
         ).rename_column("description","summary")
+        
+        data = data.filter()
         
         
     
@@ -70,18 +72,19 @@ def prepare_data(logger,tokenizer,data_list):
     TODO @mwtang come up with better prompts please.
     """
     prompts = []
-    for data in data_list:
-        if len(data["summary"]) > 1:
-            summary_chunck = data["summary"].split(sep="\n")[0].split(sep=". ")[0]+". "
-            prefix = "Generate long article based on title and summary. Title: "
-            prompt = prefix+data["title"]+" Summary: "+ summary_chunck+"Generation:"
-        
-        else: 
-            prefix = "Generate a long article based on title. Title: "
-            prompt = prefix+data["title"]+" Generation:"
+    for data in tqdm(data_list):
 
-        prompts.append(prompt)
+        summary_chunck = data["summary"].split(sep="\n")[0].split(sep=". ")[0]
+        summary_chunck = summary_chunck[:200]+". "
+        prefix = "Generate long article based on title and summary. Title: "
+        prompt = prefix+data["title"]+" Summary: "+ summary_chunck+"Generation:"
+        
+        if len(prompt) > 1020:
+            logger.warning("input sequence too long. disgarded data instance.")
+        else:
+            prompts.append(prompt)
     
+    logger.info("Running tokenization...")
     input_tensors = tokenizer(prompts, return_tensors="pt", padding=True)
 
     return input_tensors

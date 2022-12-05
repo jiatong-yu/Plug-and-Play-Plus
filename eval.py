@@ -85,9 +85,9 @@ def eval_bleu(logger,generations, labels):
     """
     bleu = load("bleu")
 
-    logger.info("calculating mauve scores...")
+    logger.info("calculating bleu scores...")
     bleu_scores = bleu.compute(predictions=generations, references=labels)
-    logger.info("mauve score: "+str(bleu_scores["bleu"]))
+    logger.info("bleu score: "+str(bleu_scores["bleu"]))
     return bleu_scores
 
 if __name__ == '__main__':

@@ -44,6 +44,16 @@ def load_model(logger, model_name):
     if tokenizer.bos_token is None:
         logger.info("TOKENIZER: updated bos token")
         tokenizer.add_special_tokens({'bos_token': '<|endoftext|>'})
+    # if tokenizer.cls_token is None:
+    #     logger.info("TOKENIZER: updated cls token")
+    #     tokenizer.add_special_tokens({'cls_token': '<|CLS|>'})
+    # if tokenizer.mask_token is None:
+    #     logger.info("TOKENIZER: updated mask token")
+    #     tokenizer.add_special_tokens({'mask_token': '<|MASK|>'})
+    # if tokenizer.sep_token is None:
+    #     logger.info("TOKENIZER: updated sep token")
+    #     tokenizer.add_special_tokens({'sep_token': '<|SEP|>'})
+
     tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
     model.resize_token_embeddings(len(tokenizer))
 
@@ -64,8 +74,8 @@ def generate(logger,
     Please use top-p decoding. The other ones are really bad.
     """
     assert method in ["beam", "greedy", "top-p"]
-    temperature = 1.5
-    lp = 1
+    temperature = 0.8
+    lp = 0.9
     
     
     dataloader = get_dataloader(input_tensors,batch_size=batch_size)
@@ -76,11 +86,16 @@ def generate(logger,
         input_ids = batch[0].cuda()
         attn_mask = batch[1].cuda()
 
+        max_gen_len = 600
+        min_gen_len = 128
+
+        # logger.info(f"max gen len: {max_gen_len}")
+        # logger.info(f"min gen len: {min_gen_len}")
         
         if method == "beam":
             outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = len(input_ids)+max_len,
-                                    min_length = len(input_ids)+min_len,
+                                    max_length = max_gen_len,
+                                    min_length = min_gen_len,
                                     temperature = temperature,
                                     num_beams = 5,
                                     length_penalty = lp,
@@ -104,8 +119,8 @@ def generate(logger,
 
         elif method == "top-p":
             outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = len(input_ids)+max_len,
-                                    min_length = len(input_ids)+min_len,
+                                    max_length = max_gen_len,
+                                    min_length = min_gen_len,
                                     temperature = temperature,
                                     do_sample = True,
                                     top_k = 0,
