@@ -6,6 +6,9 @@ import numpy as np
 from evaluate import load
 import logging
 from tqdm import tqdm
+from simCSE.simcse.tool import SimCSE
+
+#TODO: Implementing dic store of <sim score, (generation, label)>.
 
 def load_data_pair(logger, data_path):
     """
@@ -35,6 +38,7 @@ def load_data_pair(logger, data_path):
         label = prompt+data["text"]
         labels.append(label)
     
+    assert(len(generations) == len(labels))
     return generations, labels
 
 
@@ -84,11 +88,25 @@ def eval_bleu(logger,generations, labels):
     Return bleu score of generations and references.
     """
     bleu = load("bleu")
+    scores = []
 
     logger.info("calculating bleu scores...")
-    bleu_scores = bleu.compute(predictions=generations, references=labels)
-    logger.info("bleu score: "+str(bleu_scores["bleu"]))
+    for gen,ref in tqdm(zip(generations, labels)):
+        scores.append(bleu.compute(predictions=gen, references=ref))
+    
+    bleu_scores = np.average(scores)
+    logger.info("bleu score: "+str(bleu_scores))
     return bleu_scores
+
+def eval_simcse(logger, generations, labels):
+    simcse = SimCSE("princeton-nlp/sup-simcse-bert-base-uncased")
+    scores = []
+    for gen,ref in tqdm(zip(generations, labels)):
+        scores.append(simcse.similarity(gen,ref))
+        logger.info(scores)
+    
+    sim_score = np.average(scores)
+    return sim_score
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -96,6 +114,9 @@ if __name__ == '__main__':
     parser.add_argument("--res_dir",type=str, default="baseline1/cc_news-output/")
     parser.add_argument("--bleu",default=False, action="store_true")
     parser.add_argument("--mauve",default=False,action="store_true")
+    parser.add_argument("--simcse", default=False, action="store_true")
+
+    parser.add_argument("--log_folder", type=str, default="eval_log/")
     args = parser.parse_args()
 
     handlers = [logging.StreamHandler()]
@@ -117,7 +138,8 @@ if __name__ == '__main__':
     if args.mauve:
         res = eval_mauve(logger, generations, labels)
     
-    
+    if args.simcse: 
+        res = eval_bleu(logger, generations, labels)
 
     
 
