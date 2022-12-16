@@ -7,8 +7,8 @@ from evaluate import load
 import logging
 from tqdm import tqdm
 from simCSE.simcse.tool import SimCSE
-
-#TODO: Implementing dic store of <sim score, (generation, label)>.
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 def load_data_pair(logger, data_path):
     """
@@ -69,6 +69,17 @@ def calc_stats(logger, generations, labels):
 
     return 
     
+def eval_tfidf(logger, generations, labels):
+    tfidf_vectorizer = TfidfVectorizer(use_idf=True)
+    vectorizer = tfidf_vectorizer.fit(labels)
+    logger.info("calculating tf-idf score...")
+    scores = []
+    for gen,ref in tqdm(zip(generations, labels)):
+        score = cosine_similarity(vectorizer.transform([gen]), vectorizer.transform([ref]))
+        scores.append(score[0])
+    tfidf_score = np.average(scores)
+    logger.info("tf-idf score: "+str(tfidf_score))
+    return tfidf_score
 
 def eval_mauve(logger,generations, labels):
     """
@@ -103,10 +114,10 @@ def eval_simcse(logger, generations, labels):
     scores = []
     for gen,ref in tqdm(zip(generations, labels)):
         scores.append(simcse.similarity(gen,ref))
-        logger.info(scores)
     
     sim_score = np.average(scores)
     return sim_score
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -132,14 +143,19 @@ if __name__ == '__main__':
     generations, labels = load_data_pair(logger,data_path=path)
     calc_stats(logger, generations, labels)
 
+    res_dict = {}
+
     if args.bleu:
         res = eval_bleu(logger, generations, labels)
+        res_dict["bleu"] = res 
 
     if args.mauve:
         res = eval_mauve(logger, generations, labels)
+        res_dict["mauve"] = res 
     
     if args.simcse: 
         res = eval_bleu(logger, generations, labels)
-
+        res_dict["simcse"] = res
+    
     
 

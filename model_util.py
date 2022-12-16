@@ -56,6 +56,7 @@ def load_model(logger, model_name):
 
     tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
     model.resize_token_embeddings(len(tokenizer))
+    model.eval()
 
     return model, tokenizer
         
@@ -74,7 +75,7 @@ def generate(logger,
     Please use top-p decoding. The other ones are really bad.
     """
     assert method in ["beam", "greedy", "top-p"]
-    temperature = 0.8
+    temperature = 1.0
     lp = 0.9
     
     
@@ -82,55 +83,56 @@ def generate(logger,
     generations = []
     
     logger.info("Running model generation...")
-    for batch in tqdm(dataloader):
-        input_ids = batch[0].cuda()
-        attn_mask = batch[1].cuda()
+    with torch.no_grad():
+        for batch in tqdm(dataloader):
+            input_ids = batch[0].cuda()
+            attn_mask = batch[1].cuda()
 
-        max_gen_len = 600
-        min_gen_len = 128
+            max_gen_len = 600
+            min_gen_len = 128
 
-        # logger.info(f"max gen len: {max_gen_len}")
-        # logger.info(f"min gen len: {min_gen_len}")
-        
-        if method == "beam":
-            outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = max_gen_len,
-                                    min_length = min_gen_len,
-                                    temperature = temperature,
-                                    num_beams = 5,
-                                    length_penalty = lp,
-                                    eos_token_id = tokenizer.eos_token_id,
-                                    bos_token_id = tokenizer.bos_token_id,
-                                    )
-            generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
-        
-        elif method == "greedy":
-            outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = len(input_ids)+max_len,
-                                    min_length = len(input_ids)+min_len,
-                                    temperature = temperature,
-                                    do_sample = False,
-                                    length_penalty = lp,
-                                    eos_token_id = tokenizer.eos_token_id,
-                                    bos_token_id = tokenizer.bos_token_id,
-                                    )
-            generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
+            # logger.info(f"max gen len: {max_gen_len}")
+            # logger.info(f"min gen len: {min_gen_len}")
             
+            if method == "beam":
+                outputs = model.generate(input_ids, attention_mask=attn_mask,
+                                        max_length = max_gen_len,
+                                        min_length = min_gen_len,
+                                        temperature = temperature,
+                                        num_beams = 5,
+                                        length_penalty = lp,
+                                        eos_token_id = tokenizer.eos_token_id,
+                                        bos_token_id = tokenizer.bos_token_id,
+                                        )
+                generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
+            
+            elif method == "greedy":
+                outputs = model.generate(input_ids, attention_mask=attn_mask,
+                                        max_length = len(input_ids)+max_len,
+                                        min_length = len(input_ids)+min_len,
+                                        temperature = temperature,
+                                        do_sample = False,
+                                        length_penalty = lp,
+                                        eos_token_id = tokenizer.eos_token_id,
+                                        bos_token_id = tokenizer.bos_token_id,
+                                        )
+                generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
+                
 
-        elif method == "top-p":
-            outputs = model.generate(input_ids, attention_mask=attn_mask,
-                                    max_length = max_gen_len,
-                                    min_length = min_gen_len,
-                                    temperature = temperature,
-                                    do_sample = True,
-                                    top_k = 0,
-                                    top_p = 0.9,
-                                    repetition_penalty = 0.9,
-                                    length_penalty = lp,
-                                    eos_token_id = tokenizer.eos_token_id,
-                                    bos_token_id = tokenizer.bos_token_id,
-                                    )
-            generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
+            elif method == "top-p":
+                outputs = model.generate(input_ids, attention_mask=attn_mask,
+                                        max_length = max_gen_len,
+                                        min_length = min_gen_len,
+                                        temperature = temperature,
+                                        do_sample = True,
+                                        top_k = 0,
+                                        top_p = 0.9,
+                                        repetition_penalty = 0.9,
+                                        length_penalty = lp,
+                                        eos_token_id = tokenizer.eos_token_id,
+                                        bos_token_id = tokenizer.bos_token_id,
+                                        )
+                generations += [_ for _ in tokenizer.batch_decode(outputs, skip_special_tokens=True)]
     
     # logger.info(f"SHAPE OF GENERATIONS: {len(generations)}")
     return generations 
