@@ -48,6 +48,7 @@ def load_data_pair(logger, data_path, gen_only = True ):
             labels.append(label)
         generations = raw_generations 
     
+    
     assert(len(generations) == len(labels))
     return generations, labels
 
